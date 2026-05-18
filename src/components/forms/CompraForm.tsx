@@ -155,7 +155,8 @@ export const CompraForm: React.FC<CompraFormProps> = ({
         .insert([{
           proveedor_id: proveedor.id,
           local_id: localId,
-          numero_factura: numeroFactura ? `${tipoComprobante} ${numeroFactura}` : tipoComprobante,
+          tipo_comprobante: tipoComprobante,
+          nro_comprobante: numeroFactura || null,
           fecha,
           subtotal: total,
           total,
@@ -174,7 +175,7 @@ export const CompraForm: React.FC<CompraFormProps> = ({
         producto_id: item.producto_id,
         descripcion: item.descripcion,
         cantidad: item.cantidad,
-        precio_unitario: item.precio_unitario,
+        costo_unitario: item.precio_unitario,
         subtotal: item.subtotal
       }))
 
