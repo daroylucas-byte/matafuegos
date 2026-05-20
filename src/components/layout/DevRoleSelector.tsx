@@ -9,12 +9,10 @@ export const DevRoleSelector: React.FC = () => {
   const { user, rol } = useAuth()
   const [updating, setUpdating] = useState(false)
 
-  if (!user) return null
-
   const roles: { value: UserRol; label: string }[] = [
-    { value: 'superadmin', label: '🛡️ Super Admin' },
+    { value: 'superadmin', label: '👑 Super Admin' },
     { value: 'admin', label: '💼 Admin' },
-    { value: 'vendedor', label: '🏷️ Vendedor' },
+    { value: 'vendedor', label: '🤝 Vendedor' },
     { value: 'cajero', label: '💵 Cajero' },
     { value: 'visor', label: '👁️ Visor' }
   ]
@@ -28,18 +26,20 @@ export const DevRoleSelector: React.FC = () => {
       // 1. Update localStorage override
       localStorage.setItem('dev_role_override', newRole)
       
-      // 2. Update real database profile (to sync backend RLS policies)
-      const { error } = await supabase
-        .from('profiles')
-        .update({ rol: newRole })
-        .eq('id', user.id)
+      // 2. Update real database profile if user is logged in
+      if (user) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ rol: newRole })
+          .eq('id', user.id)
 
-      if (error) {
-        console.error('Error actualizando perfil:', error)
+        if (error) {
+          console.error('Error actualizando perfil:', error)
+        }
+
+        // 3. Refresh session claims in Supabase auth
+        await supabase.auth.refreshSession()
       }
-
-      // 3. Refresh session claims in Supabase auth
-      await supabase.auth.refreshSession()
 
       toast.success(`Rol cambiado a: ${newRole.toUpperCase()}! Recargando...`)
       
