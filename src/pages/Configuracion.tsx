@@ -13,14 +13,50 @@ import {
   Phone
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { cn } from '../lib/utils';
+import { cn, formatCurrency } from '../lib/utils';
 import { Button } from '../components/ui/Button';
+import { useLocal } from '../contexts/LocalContext';
+import { FacturaEmitirModal } from '../components/FacturaEmitirModal';
+import { Receipt } from 'lucide-react';
 
 const Configuracion: React.FC = () => {
   const { config, refreshConfig } = useConfig();
+  const { activeLocalId } = useLocal();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'app' | 'empresa'>('app');
+  const [activeTab, setActiveTab] = useState<'app' | 'empresa' | 'arca'>('app');
+  
+  const [facturaLibreOpen, setFacturaLibreOpen] = useState(false);
+  const [recentFacturas, setRecentFacturas] = useState<any[]>([]);
+  const [loadingFacturas, setLoadingFacturas] = useState(false);
+
+  const isArcaConfigured = activeLocalId && config?.servicios?.arca?.[activeLocalId]?.punto_venta;
+
+  const fetchRecentFacturas = async () => {
+    try {
+      setLoadingFacturas(true);
+      const { data, error } = await supabase
+        .from('facturas_arca')
+        .select('*')
+        .eq('local_id', activeLocalId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (!error && data) {
+        setRecentFacturas(data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingFacturas(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'arca' && activeLocalId) {
+      fetchRecentFacturas();
+    }
+  }, [activeTab, activeLocalId]);
   
   const [formData, setFormData] = useState({
     nombre_app: '',
@@ -33,6 +69,7 @@ const Configuracion: React.FC = () => {
     email_empresa: '',
     telefono: ''
   });
+
   useEffect(() => {
     if (config) {
       setFormData({
@@ -105,7 +142,7 @@ const Configuracion: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-headline-lg font-bold text-on-surface">Configuración General</h1>
-          <p className="text-body-lg text-on-surface-variant">Personaliza tu plataforma y gestiona tus sucursales.</p>
+          <p className="text-body-lg text-on-surface-variant">Personaliza tu plataforma y gestiona la identidad de tu empresa.</p>
         </div>
       </div>
 
@@ -129,6 +166,17 @@ const Configuracion: React.FC = () => {
         >
           Empresa
         </button>
+        {isArcaConfigured && (
+          <button 
+            onClick={() => setActiveTab('arca')}
+            className={cn(
+              "px-6 py-2 rounded-xl text-label-md font-bold transition-all",
+              activeTab === 'arca' ? "bg-white shadow-sm text-primary" : "text-on-surface-variant hover:bg-white/50"
+            )}
+          >
+            Factura Libre (ARCA)
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -242,7 +290,83 @@ const Configuracion: React.FC = () => {
             </div>
           )}
 
+          {activeTab === 'arca' && (
+            <div className="bg-white rounded-3xl p-8 border border-outline-variant shadow-sm space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 text-emerald-600">
+                  <Receipt className="h-6 w-6" />
+                  <h3 className="text-headline-sm font-bold text-on-surface">Facturación Libre ARCA</h3>
+                </div>
+                <Button 
+                  onClick={() => setFacturaLibreOpen(true)}
+                  className="bg-emerald-600 hover:bg-emerald-600/95 text-white rounded-xl shadow-md shadow-emerald-600/10"
+                >
+                  <Receipt className="h-4.5 w-4.5 mr-2" /> Nueva Factura Libre
+                </Button>
+              </div>
 
+              <div className="bg-surface-container-low border border-outline-variant p-4 rounded-2xl flex gap-3 text-xs text-on-surface-variant">
+                <Building2 className="h-5 w-5 text-primary shrink-0" />
+                <div>
+                  <span className="font-bold block text-on-surface">Punto de Venta Activo: PV {config?.servicios?.arca?.[activeLocalId || '']?.punto_venta || '1'}</span>
+                  <span>Las facturas emitidas desde esta pestaña se registrarán bajo la sucursal seleccionada actual y se enviarán al entorno de <b>{config?.servicios?.arca?.[activeLocalId || '']?.entorno === 'produccion' ? 'Producción' : 'Homologación (Test)'}</b>.</span>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-label-md font-bold text-on-surface-variant uppercase tracking-wider">Últimos comprobantes emitidos</h4>
+                
+                {loadingFacturas ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-outline" />
+                  </div>
+                ) : recentFacturas.length === 0 ? (
+                  <div className="text-center py-12 border border-dashed border-outline-variant rounded-2xl space-y-2">
+                    <Receipt className="h-10 w-10 text-outline mx-auto" />
+                    <p className="text-body-md font-bold text-on-surface">No hay facturas libres registradas</p>
+                    <p className="text-xs text-on-surface-variant max-w-sm mx-auto">Comienza emitiendo una nueva factura libre para ver su historial en este panel.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border border-outline-variant rounded-2xl">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-surface-container border-b border-outline-variant text-[11px] uppercase font-bold text-on-surface-variant">
+                          <th className="px-4 py-3">Fecha</th>
+                          <th className="px-4 py-3">Receptor</th>
+                          <th className="px-4 py-3">Concepto</th>
+                          <th className="px-4 py-3">Tipo</th>
+                          <th className="px-4 py-3 text-right">Total</th>
+                          <th className="px-4 py-3">CAE / Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-outline-variant">
+                        {recentFacturas.map((f: any) => (
+                          <tr key={f.id} className="text-xs hover:bg-slate-50">
+                            <td className="px-4 py-3 font-mono">{new Date(f.created_at).toLocaleDateString()}</td>
+                            <td className="px-4 py-3 font-bold truncate max-w-[150px]">{f.receptor_razon_social}</td>
+                            <td className="px-4 py-3 truncate max-w-[180px]">{f.concepto}</td>
+                            <td className="px-4 py-3 uppercase font-semibold text-primary">{f.tipo_comprobante.replace('_', ' ')}</td>
+                            <td className="px-4 py-3 text-right font-bold">{formatCurrency(f.total)}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-col">
+                                <span className={cn(
+                                  "font-semibold text-[10px] uppercase px-2 py-0.5 rounded-full w-fit",
+                                  f.estado === 'aprobada' ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                                )}>
+                                  {f.estado}
+                                </span>
+                                {f.cae && <span className="font-mono text-[9px] text-slate-500 mt-0.5">CAE: {f.cae}</span>}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Preview Sidebar */}
@@ -293,6 +417,12 @@ const Configuracion: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <FacturaEmitirModal
+        isOpen={facturaLibreOpen}
+        onClose={() => setFacturaLibreOpen(false)}
+        onSuccess={fetchRecentFacturas}
+      />
     </div>
   );
 };

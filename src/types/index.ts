@@ -243,3 +243,21 @@ export interface VistaVentasResumen {
   monto_total: number
   saldo_pendiente_total: number
 }
+
+export interface ClienteConSaldo extends Cliente {
+  saldo_deudor: number
+  ventas_pendientes: number
+  ultimo_contacto_cobranza?: string
+  estado_cobranza: 'normal' | 'recordatorio_enviado' | 'en_mora' | 'judicial'
+}
+
+export interface CobranzaGestion {
+  id: string
+  cliente_id: string
+  usuario_id: string
+  canal: 'whatsapp' | 'email' | 'llamada' | 'otro'
+  tono: 'amigable' | 'firme' | 'urgente'
+  mensaje: string
+  saldo_al_momento: number
+  created_at: string
+}

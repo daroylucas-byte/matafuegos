@@ -22,6 +22,8 @@ const Caja = React.lazy(() => import('../pages/Caja'))
 const Usuarios = React.lazy(() => import('../pages/Usuarios'))
 const Configuracion = React.lazy(() => import('../pages/Configuracion'))
 const ConfiguracionSuperAdmin = React.lazy(() => import('../pages/ConfiguracionSuperAdmin'))
+const Chat = React.lazy(() => import('../pages/Chat'))
+const Cobranzas = React.lazy(() => import('../pages/Cobranzas'))
 const Login = React.lazy(() => import('../pages/Login'))
 const Register = React.lazy(() => import('../pages/Register'))
 const Unauthorized = React.lazy(() => import('../pages/Unauthorized'))
@@ -87,6 +89,12 @@ export const AppRouter: React.FC = () => {
           <Route path="/clientes/:id" element={
             <ProtectedRoute allowedRoles={['admin', 'vendedor']}>
               <ClienteDetail />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/cobranzas" element={
+            <ProtectedRoute allowedRoles={['admin', 'vendedor']}>
+              <Cobranzas />
             </ProtectedRoute>
           } />
           
@@ -157,6 +165,12 @@ export const AppRouter: React.FC = () => {
           <Route path="/configuracion" element={
             <ProtectedRoute allowedRoles={['admin']}>
               <Configuracion />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/chat" element={
+            <ProtectedRoute>
+              <Chat />
             </ProtectedRoute>
           } />
           

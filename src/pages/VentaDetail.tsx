@@ -7,7 +7,8 @@ import {
   Truck, 
   Receipt,
   Ban,
-  Printer
+  Printer,
+  ShieldCheck
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, formatDate } from '../lib/utils'
@@ -18,6 +19,9 @@ import { PagoForm } from '../components/forms/PagoForm'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { useConfig } from '../contexts/ConfigContext'
 import { VentaPDFModal } from '../components/pdf/VentaPDFModal'
+import { useLocal } from '../contexts/LocalContext'
+import { FacturaEmitirModal } from '../components/FacturaEmitirModal'
+import { FacturaDetalleModal } from '../components/FacturaDetalleModal'
 
 const VentaDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -27,7 +31,13 @@ const VentaDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [pagoOpen, setPagoOpen] = useState(false)
   const [pdfOpen, setPdfOpen] = useState(false)
+  const [facturaOpen, setFacturaOpen] = useState(false)
+  const [verFacturaOpen, setVerFacturaOpen] = useState(false)
+  const [facturaArca, setFacturaArca] = useState<any | null>(null)
   const { config } = useConfig()
+  const { activeLocalId, activeLocalName } = useLocal()
+
+  const isArcaConfigured = activeLocalId && config?.servicios?.arca?.[activeLocalId]?.punto_venta
 
   const loadVenta = async () => {
     try {
@@ -45,6 +55,16 @@ const VentaDetail: React.FC = () => {
 
       if (fetchError) throw fetchError
       setVenta(data)
+
+      // Buscar factura electrónica asociada a la venta
+      const { data: factData } = await supabase
+        .from('facturas_arca')
+        .select('*')
+        .eq('venta_id', id)
+        .maybeSingle()
+      
+      setFacturaArca(factData)
+
     } catch (err: any) {
       setError(err.message || 'Error al cargar la venta')
     } finally {
@@ -73,6 +93,9 @@ const VentaDetail: React.FC = () => {
   if (loading) return <LoadingSpinner fullPage />
   if (error || !venta) return <div className="p-8 text-error font-bold text-center">{error || 'Venta no encontrada'}</div>
 
+  // Obtener la configuración específica de ARCA para este local
+  const sucursalConfig = activeLocalId ? config?.servicios?.arca?.[activeLocalId] : null
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-500 pb-12">
       {/* Header */}
@@ -97,6 +120,25 @@ const VentaDetail: React.FC = () => {
           >
             <Printer className="h-4 w-4 mr-2" /> Imprimir
           </Button>
+
+          {isArcaConfigured && venta.estado !== 'cancelado' && venta.estado !== 'facturado' && !facturaArca && (
+            <Button 
+              className="bg-emerald-600 hover:bg-emerald-600/95 text-white shadow-emerald-600/10"
+              onClick={() => setFacturaOpen(true)}
+            >
+              <Receipt className="h-4 w-4 mr-2" /> Facturar ARCA
+            </Button>
+          )}
+
+          {facturaArca && (
+            <Button 
+              className="bg-sky-600 hover:bg-sky-600/95 text-white shadow-sky-600/10"
+              onClick={() => setVerFacturaOpen(true)}
+            >
+              <FileText className="h-4 w-4 mr-2" /> Ver Factura ARCA
+            </Button>
+          )}
+
           {venta.estado === 'presupuesto' && <Button onClick={() => updateEstado('confirmado')}>Confirmar Pedido</Button>}
           {venta.estado === 'confirmado' && <Button onClick={() => updateEstado('en_preparacion')}>Pasar a Preparación</Button>}
           {venta.estado === 'en_preparacion' && <Button onClick={() => updateEstado('entregado')}>Marcar Entregado</Button>}
@@ -157,6 +199,53 @@ const VentaDetail: React.FC = () => {
               </table>
             </div>
           </div>
+
+          {/* Factura Electrónica Info Box */}
+          {facturaArca && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5 text-emerald-600 animate-pulse" />
+                  <span className="text-label-md font-bold text-slate-800 uppercase tracking-widest">Factura Electrónica ARCA</span>
+                </div>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full uppercase border ${
+                  facturaArca.estado === 'aprobada' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                  facturaArca.estado === 'pendiente' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                  'bg-rose-50 text-rose-700 border-rose-200'
+                }`}>
+                  {facturaArca.estado === 'aprobada' ? 'Aprobada por AFIP' : facturaArca.estado === 'pendiente' ? 'Procesando CAE' : 'Rechazada'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                <div>
+                  <p className="text-slate-400 font-medium">Tipo Comprobante</p>
+                  <p className="font-bold text-slate-900 mt-0.5 uppercase">{facturaArca.tipo_comprobante.replace('_', ' ')}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 font-medium">CAE Autorizado</p>
+                  <p className="font-mono font-bold text-slate-900 mt-0.5 tracking-wider">{facturaArca.cae || 'PROCESANDO_CAE'}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 font-medium">Vencimiento CAE</p>
+                  <p className="font-bold text-slate-900 mt-0.5">{facturaArca.cae_vencimiento ? formatDate(facturaArca.cae_vencimiento) : '31/12/2026'}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 font-medium">Total Facturado</p>
+                  <p className="font-bold text-emerald-600 text-sm mt-0.5">{formatCurrency(facturaArca.total)}</p>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2 border-t border-slate-100">
+                <Button 
+                  variant="secondary"
+                  size="sm"
+                  className="text-xs border-slate-200 hover:bg-slate-50 gap-1.5"
+                  onClick={() => setVerFacturaOpen(true)}
+                >
+                  <FileText className="h-3.5 w-3.5" /> Ver Detalle de Factura
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="bg-surface-container-low border border-outline-variant rounded-2xl p-6">
             <div className="flex items-start gap-3">
@@ -224,6 +313,22 @@ const VentaDetail: React.FC = () => {
         onClose={() => setPdfOpen(false)}
         venta={venta}
         config={config}
+      />
+
+      <FacturaEmitirModal
+        isOpen={facturaOpen}
+        onClose={() => setFacturaOpen(false)}
+        onSuccess={loadVenta}
+        venta={venta}
+      />
+
+      <FacturaDetalleModal
+        isOpen={verFacturaOpen}
+        onClose={() => setVerFacturaOpen(false)}
+        factura={facturaArca}
+        venta={venta}
+        sucursalConfig={sucursalConfig}
+        activeLocalName={activeLocalName}
       />
     </div>
   )

@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { LayoutProvider, useLayout } from './LayoutContext'
 import { cn } from '../../lib/utils'
+import { DevRoleSelector } from './DevRoleSelector'
 
 const LayoutContent: React.FC = () => {
   const { isCollapsed } = useLayout()
@@ -24,6 +25,9 @@ const LayoutContent: React.FC = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Floating Dev Role Selector */}
+      <DevRoleSelector />
     </div>
   )
 }

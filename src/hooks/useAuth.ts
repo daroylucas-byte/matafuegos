@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Profile, UserRol } from '../types'
 import type { User } from '@supabase/supabase-js'
@@ -61,10 +61,21 @@ export function useAuth() {
     await supabase.auth.signOut()
   }
 
+  const devRoleOverride = localStorage.getItem('dev_role_override') as UserRol | null
+  const activeRol = devRoleOverride || (profile?.rol as UserRol | undefined)
+
+  const activeProfile = useMemo(() => {
+    if (!profile) return null
+    return {
+      ...profile,
+      rol: activeRol as any
+    }
+  }, [profile, activeRol])
+
   return {
     user,
-    profile,
-    rol: profile?.rol as UserRol | undefined,
+    profile: activeProfile,
+    rol: activeRol,
     loading,
     signOut
   }

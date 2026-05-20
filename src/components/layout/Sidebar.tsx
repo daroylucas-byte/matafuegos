@@ -13,7 +13,9 @@ import {
   ChevronRight,
   ShoppingBag,
   UserCog,
-  ShieldCheck
+  ShieldCheck,
+  MessageSquare,
+  DollarSign
 } from 'lucide-react'
 import { useLayout } from './LayoutContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -31,11 +33,13 @@ export const Sidebar: React.FC = () => {
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'vendedor', 'superadmin'], key: 'dashboard' },
     { name: 'Clientes', path: '/clientes', icon: Users, roles: ['admin', 'vendedor', 'superadmin'], key: 'clientes' },
     { name: 'Ventas', path: '/ventas', icon: Receipt, roles: ['admin', 'vendedor', 'superadmin'], key: 'ventas' },
+    { name: 'Cobranzas', path: '/cobranzas', icon: DollarSign, roles: ['admin', 'vendedor', 'superadmin'], key: 'cobranzas' },
     { name: 'Proveedores', path: '/proveedores', icon: Truck, roles: ['admin', 'superadmin'], key: 'proveedores' },
     { name: 'Compras', path: '/compras', icon: ShoppingBag, roles: ['admin', 'superadmin'], key: 'compras' },
     { name: 'Caja', path: '/caja', icon: Wallet, roles: ['admin', 'vendedor', 'superadmin'], key: 'caja' },
     { name: 'Catálogo', path: '/productos', icon: Package, roles: ['admin', 'vendedor', 'superadmin'], key: 'catalogo' },
     { name: 'Usuarios', path: '/usuarios', icon: UserCog, roles: ['admin', 'superadmin'], key: 'usuarios' },
+    { name: 'Chat', path: '/chat', icon: MessageSquare, roles: ['admin', 'vendedor', 'superadmin', 'cajero', 'visor'], key: 'chat' },
     { name: 'Configuración', path: '/configuracion', icon: Settings, roles: ['admin', 'superadmin'], key: 'configuracion' },
     { name: 'Super Admin', path: '/superadmin', icon: ShieldCheck, roles: ['superadmin'], key: 'superadmin' },
   ]
@@ -55,8 +59,12 @@ export const Sidebar: React.FC = () => {
     const hasRole = !item.roles || (profile?.rol && item.roles.includes(profile.rol))
     if (!hasRole) return false
 
-    // 2. Verificar si el módulo está deshabilitado explícitamente en la configuración
-    // Si no existe la configuración, asumimos que está habilitado (true)
+    // 2. Chat es opcional y viene deshabilitado por defecto (debe ser true)
+    if (item.key === 'chat') {
+      return modulos.chat === true
+    }
+
+    // 3. Para el resto de los módulos, se asume habilitado a menos que esté en false
     const estadoModulo = modulos[item.key as keyof typeof modulos]
     return estadoModulo !== false
   })

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ShieldCheck, Layout, Boxes, AlertCircle, Store, Plus, Trash2, MapPin, Loader2, Edit2 } from 'lucide-react'
+import { ShieldCheck, Layout, Boxes, AlertCircle, Store, Plus, Trash2, MapPin, Loader2, Edit2, Receipt, Key, FileCode } from 'lucide-react'
 import { useConfig } from '../contexts/ConfigContext'
 import { useLocal } from '../contexts/LocalContext'
 import { useAuth } from '../hooks/useAuth'
@@ -20,7 +20,83 @@ const ConfiguracionSuperAdmin: React.FC = () => {
   const [loadingLocales, setLoadingLocales] = useState(false)
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false)
   const [editingLocal, setEditingLocal] = useState<any>(null)
-  const [savingLocal, setSavingLocal] = useState(false)
+   const [savingLocal, setSavingLocal] = useState(false)
+  
+  // ARCA Modal configuration states
+  const [selectedLocalForArca, setSelectedLocalForArca] = useState<any>(null)
+  const [isArcaModalOpen, setIsArcaModalOpen] = useState(false)
+  const [savingArca, setSavingArca] = useState(false)
+  const [arcaData, setArcaData] = useState({
+    punto_venta: '',
+    modo: 'homologacion',
+    cuit: '',
+    iibb: '',
+    iva: 'Responsable Inscripto',
+    inicio_actividades: '',
+    certificado_crt: '',
+    clave_privada_key: ''
+  })
+
+  const handleOpenArcaModal = (local: any) => {
+    setSelectedLocalForArca(local)
+    const sucursalArca = config?.servicios?.arca?.[local.id] || {}
+    setArcaData({
+      punto_venta: sucursalArca.punto_venta || '',
+      modo: sucursalArca.modo || 'homologacion',
+      cuit: sucursalArca.cuit || config?.cuit || '',
+      iibb: sucursalArca.iibb || '',
+      iva: sucursalArca.iva || 'Responsable Inscripto',
+      inicio_actividades: sucursalArca.inicio_actividades || '',
+      certificado_crt: sucursalArca.certificado_crt || '',
+      clave_privada_key: sucursalArca.clave_privada_key || ''
+    })
+    setIsArcaModalOpen(true)
+  }
+
+  const handleSaveArca = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedLocalForArca) return
+
+    setSavingArca(true)
+    try {
+      const currentServicios = config?.servicios || {}
+      const currentArca = currentServicios.arca || {}
+
+      const nuevoValor = {
+        ...currentServicios,
+        arca: {
+          ...currentArca,
+          [selectedLocalForArca.id]: {
+            punto_venta: arcaData.punto_venta,
+            modo: arcaData.modo,
+            cuit: arcaData.cuit,
+            iibb: arcaData.iibb,
+            iva: arcaData.iva,
+            inicio_actividades: arcaData.inicio_actividades,
+            certificado_crt: arcaData.certificado_crt,
+            clave_privada_key: arcaData.clave_privada_key
+          }
+        }
+      }
+
+      const { error } = await supabase
+        .from('configuracion')
+        .update({ servicios: nuevoValor })
+        .eq('id', 1)
+
+      if (error) throw error
+
+      await refreshConfig()
+      toast.success('Configuración ARCA guardada exitosamente')
+      setIsArcaModalOpen(false)
+      setSelectedLocalForArca(null)
+    } catch (err: any) {
+      toast.error('Error al guardar: ' + err.message)
+    } finally {
+      setSavingArca(false)
+    }
+  }
+
 
   useEffect(() => {
     if (rol === 'superadmin') {
@@ -100,11 +176,13 @@ const ConfiguracionSuperAdmin: React.FC = () => {
     dashboard: true,
     clientes: true,
     ventas: true,
+    cobranzas: true,
     proveedores: true,
     compras: true,
     caja: true,
     catalogo: true,
-    usuarios: true
+    usuarios: true,
+    chat: false
   }
 
   const integraciones = config?.servicios?.integraciones || {
@@ -145,6 +223,40 @@ const ConfiguracionSuperAdmin: React.FC = () => {
       // Forzar actualización del contexto
       await refreshConfig()
       toast.success(`Módulo ${key} ${nuevoEstado ? 'habilitado' : 'deshabilitado'}`)
+    } catch (err: any) {
+      toast.error('Error al actualizar: ' + err.message)
+    } finally {
+      setUpdating(null)
+    }
+  }
+
+  const toggleIntegracion = async (key: string) => {
+    const currentServicios = config?.servicios || {}
+    const currentIntegraciones = currentServicios.integraciones || { arca: false, is: false }
+    
+    // Invertir el valor actual
+    const nuevoEstado = currentIntegraciones[key] === false ? true : false
+
+    const nuevoValor = {
+      ...currentServicios,
+      integraciones: {
+        ...currentIntegraciones,
+        [key]: nuevoEstado
+      }
+    }
+
+    try {
+      setUpdating(key)
+      const { error } = await supabase
+        .from('configuracion')
+        .update({ servicios: nuevoValor })
+        .eq('id', 1)
+
+      if (error) throw error
+
+      // Forzar actualización del contexto
+      await refreshConfig()
+      toast.success(`Integración ${key === 'arca' ? 'ARCA' : key} ${nuevoEstado ? 'habilitada' : 'deshabilitada'}`)
     } catch (err: any) {
       toast.error('Error al actualizar: ' + err.message)
     } finally {
@@ -198,6 +310,13 @@ const ConfiguracionSuperAdmin: React.FC = () => {
             loading={updating === 'ventas'}
           />
           <ModuleToggle 
+            label="Cobranzas" 
+            desc="Seguimiento de saldos deudores y recordatorios" 
+            active={modulos.cobranzas !== false} 
+            onChange={() => toggleModulo('cobranzas')}
+            loading={updating === 'cobranzas'}
+          />
+          <ModuleToggle 
             label="Proveedores" 
             desc="Gestión de proveedores" 
             active={modulos.proveedores} 
@@ -232,6 +351,13 @@ const ConfiguracionSuperAdmin: React.FC = () => {
             onChange={() => toggleModulo('usuarios')}
             loading={updating === 'usuarios'}
           />
+          <ModuleToggle 
+            label="Chat Interno" 
+            desc="Mensajería en tiempo real entre sucursales y roles" 
+            active={modulos.chat} 
+            onChange={() => toggleModulo('chat')}
+            loading={updating === 'chat'}
+          />
         </div>
       </section>
 
@@ -246,13 +372,13 @@ const ConfiguracionSuperAdmin: React.FC = () => {
           <p className="text-body-sm">Próximamente: Estas funciones se habilitarán bajo demanda del cliente.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-60">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <ModuleToggle 
             label="ARCA (ex-AFIP)" 
             desc="Facturación electrónica integrada" 
             active={integraciones.arca} 
-            onChange={() => {}}
-            disabled={true}
+            onChange={() => toggleIntegracion('arca')}
+            loading={updating === 'arca'}
           />
           <ModuleToggle 
             label="IS System" 
@@ -260,6 +386,7 @@ const ConfiguracionSuperAdmin: React.FC = () => {
             active={integraciones.is} 
             onChange={() => {}}
             disabled={true}
+            className="opacity-60"
           />
         </div>
       </section>
@@ -305,20 +432,33 @@ const ConfiguracionSuperAdmin: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                  <button 
-                    onClick={() => handleEditLocal(l)}
-                    className="p-2 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
-                  >
-                    <Edit2 className="h-5 w-5" />
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteLocal(l.id, l.nombre)}
-                    className="p-2 text-on-surface-variant hover:text-error hover:bg-error-container/10 rounded-lg transition-all"
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </button>
+                <div className="flex items-center gap-2">
+                  {integraciones.arca && (
+                    <button 
+                      onClick={() => handleOpenArcaModal(l)}
+                      className="px-3 py-1.5 text-primary hover:bg-primary/10 rounded-lg transition-all flex items-center gap-1.5 border border-primary/20 bg-primary/5 hover:border-primary/40 font-semibold text-xs shrink-0"
+                      title="Configurar Facturación ARCA"
+                    >
+                      <Receipt className="h-4 w-4" />
+                      <span className="hidden sm:inline">Configurar ARCA</span>
+                    </button>
+                  )}
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button 
+                      onClick={() => handleEditLocal(l)}
+                      className="p-2 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                    >
+                      <Edit2 className="h-5 w-5" />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteLocal(l.id, l.nombre)}
+                      className="p-2 text-on-surface-variant hover:text-error hover:bg-error-container/10 rounded-lg transition-all"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  </div>
                 </div>
+
               </div>
             ))
           )}
@@ -339,6 +479,143 @@ const ConfiguracionSuperAdmin: React.FC = () => {
           loading={savingLocal}
         />
       </Modal>
+
+      {/* Modal de Configuración ARCA */}
+      <Modal
+        isOpen={isArcaModalOpen}
+        onClose={() => { setIsArcaModalOpen(false); setSelectedLocalForArca(null); }}
+        title={`Configuración ARCA - ${selectedLocalForArca?.nombre}`}
+        maxWidth="lg"
+      >
+        <form onSubmit={handleSaveArca} className="space-y-6 max-h-[75vh] overflow-y-auto px-1 py-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-label-md font-bold text-on-surface-variant">Punto de Venta</label>
+              <input 
+                type="number" 
+                min="1" 
+                placeholder="Ej: 1" 
+                required
+                value={arcaData.punto_venta} 
+                onChange={e => setArcaData(prev => ({ ...prev, punto_venta: e.target.value }))} 
+                className="w-full p-3 bg-surface-container-lowest border border-outline-variant rounded-xl outline-none focus:ring-2 focus:ring-primary" 
+              />
+              <p className="text-body-xs text-on-surface-variant">Número del punto de venta habilitado en ARCA/AFIP.</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-label-md font-bold text-on-surface-variant">Entorno / Modo</label>
+              <select 
+                value={arcaData.modo} 
+                onChange={e => setArcaData(prev => ({ ...prev, modo: e.target.value }))} 
+                className="w-full p-3 bg-surface-container-lowest border border-outline-variant rounded-xl outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="homologacion">Homologación (Pruebas / Testing)</option>
+                <option value="produccion">Producción (Operación Real)</option>
+              </select>
+              <p className="text-body-xs text-on-surface-variant">Selecciona Homologación para realizar pruebas seguras.</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-label-md font-bold text-on-surface-variant">CUIT Emisor</label>
+              <input 
+                type="text" 
+                placeholder="Ej: 20-30456789-0" 
+                value={arcaData.cuit} 
+                onChange={e => setArcaData(prev => ({ ...prev, cuit: e.target.value }))} 
+                className="w-full p-3 bg-surface-container-lowest border border-outline-variant rounded-xl outline-none focus:ring-2 focus:ring-primary" 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-label-md font-bold text-on-surface-variant">Ingresos Brutos (IIBB)</label>
+              <input 
+                type="text" 
+                placeholder="Ej: 123-456789-0" 
+                value={arcaData.iibb} 
+                onChange={e => setArcaData(prev => ({ ...prev, iibb: e.target.value }))} 
+                className="w-full p-3 bg-surface-container-lowest border border-outline-variant rounded-xl outline-none focus:ring-2 focus:ring-primary" 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-label-md font-bold text-on-surface-variant">Condición frente al IVA</label>
+              <select 
+                value={arcaData.iva} 
+                onChange={e => setArcaData(prev => ({ ...prev, iva: e.target.value }))} 
+                className="w-full p-3 bg-surface-container-lowest border border-outline-variant rounded-xl outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="Responsable Inscripto">Responsable Inscripto</option>
+                <option value="Monotributista">Monotributista</option>
+                <option value="Exento">IVA Exento</option>
+                <option value="No Responsable">No Responsable</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-label-md font-bold text-on-surface-variant">Inicio de Actividades</label>
+              <input 
+                type="date" 
+                value={arcaData.inicio_actividades} 
+                onChange={e => setArcaData(prev => ({ ...prev, inicio_actividades: e.target.value }))} 
+                className="w-full p-3 bg-surface-container-lowest border border-outline-variant rounded-xl outline-none focus:ring-2 focus:ring-primary" 
+              />
+            </div>
+          </div>
+
+          {/* Certificados y Claves */}
+          <div className="space-y-4 pt-4 border-t border-outline-variant">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-on-surface-variant">
+                <FileCode className="h-5 w-5 text-primary" />
+                <label className="text-label-md font-bold">Certificado ARCA (.crt / .pem)</label>
+              </div>
+              <textarea 
+                rows={5}
+                placeholder="-----BEGIN CERTIFICATE-----&#10;MIIE...&#10;-----END CERTIFICATE-----"
+                value={arcaData.certificado_crt} 
+                onChange={e => setArcaData(prev => ({ ...prev, certificado_crt: e.target.value }))} 
+                className="w-full p-3 bg-surface-container-lowest border border-outline-variant rounded-xl outline-none font-mono text-xs focus:ring-2 focus:ring-primary focus:border-primary placeholder:opacity-50 resize-y"
+              />
+              <p className="text-body-xs text-on-surface-variant">Pega el contenido del certificado de facturación provisto por ARCA/AFIP.</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-on-surface-variant">
+                <Key className="h-5 w-5 text-secondary" />
+                <label className="text-label-md font-bold">Clave Privada (.key / .pem)</label>
+              </div>
+              <textarea 
+                rows={5}
+                placeholder="-----BEGIN PRIVATE KEY-----&#10;MIIE...&#10;-----END PRIVATE KEY-----"
+                value={arcaData.clave_privada_key} 
+                onChange={e => setArcaData(prev => ({ ...prev, clave_privada_key: e.target.value }))} 
+                className="w-full p-3 bg-surface-container-lowest border border-outline-variant rounded-xl outline-none font-mono text-xs focus:ring-2 focus:ring-primary focus:border-primary placeholder:opacity-50 resize-y"
+              />
+              <p className="text-body-xs text-on-surface-variant">Pega la clave privada correspondiente al certificado de arriba.</p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-outline-variant">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => { setIsArcaModalOpen(false); setSelectedLocalForArca(null); }}
+              disabled={savingArca}
+              className="rounded-xl"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              isLoading={savingArca}
+              className="rounded-xl"
+            >
+              Guardar Configuración ARCA
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }
@@ -350,14 +627,16 @@ interface ModuleToggleProps {
   onChange: () => void;
   loading?: boolean;
   disabled?: boolean;
+  className?: string;
 }
 
-const ModuleToggle: React.FC<ModuleToggleProps> = ({ label, desc, active, onChange, loading, disabled }) => {
+const ModuleToggle: React.FC<ModuleToggleProps> = ({ label, desc, active, onChange, loading, disabled, className }) => {
   return (
     <div className={cn(
       "p-4 rounded-xl border transition-all flex items-center justify-between gap-4",
       active ? "bg-white border-primary/30 shadow-sm" : "bg-surface-container-lowest border-outline-variant",
-      disabled && "cursor-not-allowed"
+      disabled && "cursor-not-allowed",
+      className
     )}>
       <div className="flex-1">
         <h3 className={cn("text-body-md font-bold", !active && "text-on-surface-variant")}>{label}</h3>
