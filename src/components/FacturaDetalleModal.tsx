@@ -1,8 +1,7 @@
 import React, { useRef } from 'react'
-import { X, Printer, ShieldCheck, Calendar, User, FileText } from 'lucide-react'
+import { X, Printer, ShieldCheck } from 'lucide-react'
 import { formatCurrency, formatDate } from '../lib/utils'
 import { Button } from './ui/Button'
-import type { Local } from '../types'
 
 interface FacturaDetalleModalProps {
   isOpen: boolean
@@ -27,7 +26,7 @@ export const FacturaDetalleModal: React.FC<FacturaDetalleModalProps> = ({
 
   const handlePrint = () => {
     const printContent = printAreaRef.current?.innerHTML
-    const originalContent = document.body.innerHTML
+    
 
     if (printContent) {
       const printWindow = window.open('', '_blank')
