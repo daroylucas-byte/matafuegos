@@ -1,15 +1,15 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { initSentry } from './lib/sentry'
-
-initSentry()
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import { ConfigProvider } from './contexts/ConfigContext'
 import { LocalProvider } from './contexts/LocalContext'
+import { initSentry } from './lib/sentry'
 import App from './App'
 import './index.css'
+
+initSentry()
 
 const queryClient = new QueryClient({
   defaultOptions: {
