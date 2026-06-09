@@ -71,7 +71,7 @@ const Dashboard: React.FC = () => {
         // Ventas
         let vq = supabase.from('ventas')
           .select('total, descuento, saldo_pendiente')
-          .not('estado', 'in', '("presupuesto","cancelado")')
+          .not('estado', 'in', '(presupuesto,cancelado)')
           .gte('fecha', desde)
           .lte('fecha', hasta)
         if (!isGlobalView) vq = vq.eq('local_id', activeLocalId)
@@ -80,7 +80,7 @@ const Dashboard: React.FC = () => {
         // Compras
         let cq = supabase.from('compras')
           .select('total, saldo_pendiente')
-          .not('estado', 'in', '("borrador","cancelada")')
+          .not('estado', 'in', '(borrador,cancelada)')
           .gte('fecha', desde)
           .lte('fecha', hasta)
         if (!isGlobalView) cq = cq.eq('local_id', activeLocalId)
@@ -196,7 +196,7 @@ const Dashboard: React.FC = () => {
       const fetchUnpaidPurchases = async () => {
         let upq = supabase.from('compras')
           .select('id, numero, fecha, fecha_vencimiento, saldo_pendiente, total, numero_factura, proveedores(razon_social)')
-          .not('estado', 'in', '("borrador","cancelada")')
+          .not('estado', 'in', '(borrador,cancelada)')
           .gt('saldo_pendiente', 0)
         
         if (!isGlobalView) upq = upq.eq('local_id', activeLocalId)
