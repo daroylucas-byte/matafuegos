@@ -41,10 +41,10 @@ const Dashboard: React.FC = () => {
 
   // Filtros de fecha: Mes actual por defecto
   const hoy = new Date()
-  const [desde, setDesde] = useState(
-    new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0]
-  )
-  const [hasta, setHasta] = useState(hoy.toISOString().split('T')[0])
+  const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0]
+  const hoyStr = hoy.toISOString().split('T')[0]
+  const [desde, setDesde] = useState(primerDiaMes)
+  const [hasta, setHasta] = useState(hoyStr)
 
   // Estados para los widgets
   const [kpis, setKpis] = useState<KPIData>({
@@ -262,7 +262,7 @@ const Dashboard: React.FC = () => {
               <input 
                 type="date" 
                 value={desde} 
-                onChange={(e) => setDesde(e.target.value)}
+                onChange={(e) => setDesde(e.target.value || primerDiaMes)}
                 className="bg-transparent border-none text-body-sm focus:ring-0 cursor-pointer"
               />
             </div>
@@ -272,7 +272,7 @@ const Dashboard: React.FC = () => {
               <input 
                 type="date" 
                 value={hasta} 
-                onChange={(e) => setHasta(e.target.value)}
+                onChange={(e) => setHasta(e.target.value || hoyStr)}
                 className="bg-transparent border-none text-body-sm focus:ring-0 cursor-pointer"
               />
             </div>
