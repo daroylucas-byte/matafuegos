@@ -63,6 +63,7 @@ const Dashboard: React.FC = () => {
   const [ultimoKardex, setUltimoKardex] = useState<any[]>([])
 
   const loadData = async () => {
+    if (!desde || !hasta) return
     try {
       setLoading(true)
 
