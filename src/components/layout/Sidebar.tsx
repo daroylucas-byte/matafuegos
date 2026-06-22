@@ -1,12 +1,12 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
 import { 
-  LayoutDashboard, 
-  Users, 
+  LayoutDashboard,
+  Users,
   Truck,
-  Receipt, 
-  Wallet, 
-  Package, 
+  Receipt,
+  Wallet,
+  Package,
   Settings,
   LogOut,
   ChevronLeft,
@@ -15,7 +15,8 @@ import {
   UserCog,
   ShieldCheck,
   MessageSquare,
-  DollarSign
+  DollarSign,
+  Megaphone
 } from 'lucide-react'
 import { useLayout } from './LayoutContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -39,6 +40,7 @@ export const Sidebar: React.FC = () => {
     { name: 'Caja', path: '/caja', icon: Wallet, roles: ['admin', 'vendedor', 'superadmin'], key: 'caja' },
     { name: 'Catálogo', path: '/productos', icon: Package, roles: ['admin', 'vendedor', 'superadmin'], key: 'catalogo' },
     { name: 'Usuarios', path: '/usuarios', icon: UserCog, roles: ['admin', 'superadmin'], key: 'usuarios' },
+    { name: 'Promociones', path: '/promociones', icon: Megaphone, roles: ['admin', 'superadmin'], key: 'promociones' },
     { name: 'Chat', path: '/chat', icon: MessageSquare, roles: ['admin', 'vendedor', 'superadmin', 'cajero', 'visor'], key: 'chat' },
     { name: 'Configuración', path: '/configuracion', icon: Settings, roles: ['admin', 'superadmin'], key: 'configuracion' },
     { name: 'Super Admin', path: '/superadmin', icon: ShieldCheck, roles: ['superadmin'], key: 'superadmin' },
