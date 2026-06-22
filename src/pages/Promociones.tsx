@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   Sparkles, Wallet, History, Image, CheckCircle, XCircle,
-  Send, ChevronDown, ChevronUp, Upload, RefreshCw, Loader2,
-  Eye, EyeOff, Plus, Megaphone, TrendingUp
+  Send, ChevronDown, ChevronUp, Upload, Loader2,
+  Eye, Plus, Megaphone, TrendingUp
 } from 'lucide-react'
 import { useLocal } from '../contexts/LocalContext'
 import { usePromociones } from '../hooks/usePromociones'
@@ -24,7 +24,7 @@ export default function Promociones() {
   const {
     promociones, config, identidad, saldo, transacciones,
     loading, generando, generandoImagen, analizando,
-    guardarInstruccion, actualizarEstado, cargarSaldo,
+    guardarInstruccion, actualizarEstado,
     generarPromociones, generarImagen, analizarIdentidadVisual, refetch,
   } = usePromociones(activeLocalId)
 
