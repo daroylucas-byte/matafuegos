@@ -30,9 +30,9 @@ serve(async (req) => {
       }],
       external_reference: `${local_id}:${monto}:${Date.now()}`,
       back_urls: {
-        success: `${Deno.env.get('FRONTEND_URL') || 'https://matafuegos.vercel.app'}/promociones?pago=exitoso`,
-        failure: `${Deno.env.get('FRONTEND_URL') || 'https://matafuegos.vercel.app'}/promociones?pago=fallido`,
-        pending: `${Deno.env.get('FRONTEND_URL') || 'https://matafuegos.vercel.app'}/promociones?pago=pendiente`,
+        success: `${Deno.env.get('FRONTEND_URL') || 'https://matafuegos-rho.vercel.app'}/promociones?pago=exitoso`,
+        failure: `${Deno.env.get('FRONTEND_URL') || 'https://matafuegos-rho.vercel.app'}/promociones?pago=fallido`,
+        pending: `${Deno.env.get('FRONTEND_URL') || 'https://matafuegos-rho.vercel.app'}/promociones?pago=pendiente`,
       },
       auto_return: 'approved',
       notification_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/webhook-mp`,
