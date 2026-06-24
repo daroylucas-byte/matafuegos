@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const MONTOS_PERMITIDOS = [5000, 10000, 20000, 50000]
+const MONTOS_PERMITIDOS = [100, 5000, 10000, 20000, 50000]
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })

@@ -424,7 +424,7 @@ export default function Promociones() {
             El pago se procesa a través de Mercado Pago. El saldo se acredita automáticamente al confirmar.
           </p>
           <div className="grid grid-cols-2 gap-3">
-            {[5000, 10000, 20000, 50000].map(m => (
+            {[100, 5000, 10000, 20000, 50000].map(m => (
               <button
                 key={m}
                 onClick={() => setMontoCarga(m)}
