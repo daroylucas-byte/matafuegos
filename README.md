@@ -1,66 +1,50 @@
-# GestApp - PWA Management System
+# Matafuegos ERP — Antigravity
 
-Scaffolded with React 18, TypeScript, Vite, Tailwind CSS v3, and Supabase.
+Sistema ERP para gestión de comercio de equipos matafuegos. PWA multi-sucursal con facturación electrónica AFIP/ARCA.
 
-## Setup Instructions
+## Stack
 
-1. **Clone the repository** (if not already in the project directory).
-2. **Install dependencies**:
+- React 18 + TypeScript + Vite + Tailwind CSS
+- Supabase (BD + Auth + Edge Functions + Storage)
+- Facturación ARCA/AFIP — backend Node.js en VPS
+
+## Setup local
+
+1. Cloná el repo
+2. Instalá dependencias:
    ```bash
    npm install
    ```
-3. **Environment Variables**:
-   Create a `.env.local` file (already created during scaffolding) with the following content:
+3. Creá `.env.local` con:
    ```env
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   VITE_SUPABASE_URL=https://ebfluydlrsjdhayrhnja.supabase.co
+   VITE_SUPABASE_ANON_KEY=<anon-key>
+   VITE_ARCA_BACKEND_URL=https://arca.srv1055314.hstgr.cloud
+   VITE_SENTRY_DSN=<dsn>
+   SENTRY_AUTH_TOKEN=<token>
+   SENTRY_ORG=dariodesarrollos
+   SENTRY_PROJECT=matafuegos-produccion
    ```
-4. **Local Supabase (Optional)**:
-   If you are using a local Supabase instance:
-   ```bash
-   npx supabase start
-   ```
-5. **Run the development server**:
+4. Corré el servidor de desarrollo:
    ```bash
    npm run dev
    ```
 
-## Design System
+## Deploy
 
-The project uses a custom design system based on Material 3 color palettes and specific typography:
-- **Primary Color**: `#4f46e5` (Indigo)
-- **Font**: Inter (400, 500, 600, 700)
-- **PWA**: Configured with `vite-plugin-pwa` for offline support.
+- **Frontend**: Vercel — auto-deploy desde `main`
+- **Backend ARCA**: VPS Hostinger `72.60.252.11` — PM2 + nginx
+  - Código: `/root/arca-backend/index.js`
+  - Reiniciar: `pm2 restart arca-backend --update-env`
+  - URL: `https://arca.srv1055314.hstgr.cloud`
 
-## Local Setup
+## Infraestructura
 
-```bash
-# Start Supabase
-supabase start
+| Servicio | Detalle |
+|---------|---------|
+| Frontend | Vercel |
+| Base de datos | Supabase `ebfluydlrsjdhayrhnja` |
+| Backend ARCA | VPS Hostinger — PM2 + Node.js + nginx |
+| Monitoreo | Sentry |
 
-# Apply migrations
-supabase migration up
-
-# Seed test user
-supabase db reset   # resets DB and auto-runs seed.sql if configured
-
-# OR run seed manually:
-supabase db execute --file supabase/seed.sql
-
-# Start frontend
-npm run dev
-```
-
-### Test User Credentials
-- **Email**: admin@gestapp.com
-- **Password**: admin123456
-
-## Project Structure
-
-- `src/components/ui`: Reusable UI primitives (Button, Input, Table, etc.)
-- `src/components/layout`: Layout components (Sidebar, TopBar, Layout)
-- `src/lib`: Shared utilities and Supabase client
-- `src/hooks`: Custom hooks (useAuth)
-- `src/pages`: Page components
-- `src/router`: Routing logic and Protected Routes
-- `src/types`: TypeScript interfaces and types
+Ver `CLAUDE.md` para documentación técnica completa.
