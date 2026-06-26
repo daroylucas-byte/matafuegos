@@ -46,7 +46,7 @@ const VentaDetail: React.FC = () => {
         .from('ventas')
         .select(`
           *,
-          clientes(id, razon_social, cuit, email, telefono),
+          clientes(id, razon_social, cuit, email, telefono, iva_cond),
           profiles(nombre),
           venta_items(*, productos(nombre, codigo))
         `)

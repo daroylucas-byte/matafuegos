@@ -21,7 +21,7 @@ interface FacturaEmitirModalProps {
 }
 
 type TipoComprobante = 'factura_a' | 'factura_b' | 'factura_c'
-type ReceptorIvaCond = 'responsable_inscripto' | 'monotributista' | 'consumidor_final' | 'exento'
+type ReceptorIvaCond = 'responsable_inscripto' | 'monotributo' | 'consumidor_final' | 'exento'
 type ReceptorTipoDoc = 'cuit' | 'dni' | 'sin_doc'
 
 export const FacturaEmitirModal: React.FC<FacturaEmitirModalProps> = ({
@@ -61,23 +61,19 @@ export const FacturaEmitirModal: React.FC<FacturaEmitirModalProps> = ({
         setRazonSocial(nombreReceptor)
         setCuitDni(cuitReceptor)
         
-        // Auto-detect document type
+        // Auto-detect document type and IVA condition from client
+        const clienteIvaCond = (venta.clientes?.iva_cond as ReceptorIvaCond) || 'consumidor_final'
+        setIvaCond(clienteIvaCond)
+
         if (cuitReceptor) {
           const cleaned = cuitReceptor.replace(/\D/g, '')
           if (cleaned.length === 11) {
             setTipoDoc('cuit')
-            // CUIT usually defaults to Responsable Inscripto or Monotributista
-            setIvaCond('responsable_inscripto')
-            setTipoComprobante('factura_a')
           } else {
             setTipoDoc('dni')
-            setIvaCond('consumidor_final')
-            setTipoComprobante('factura_b')
           }
         } else {
           setTipoDoc('sin_doc')
-          setIvaCond('consumidor_final')
-          setTipoComprobante('factura_b')
         }
 
         setConcepto(`Venta V-${venta.numero.toString().padStart(7, '0')}`)
@@ -150,8 +146,7 @@ export const FacturaEmitirModal: React.FC<FacturaEmitirModalProps> = ({
     if (ivaCond === 'responsable_inscripto') {
       setTipoComprobante('factura_a')
       setTipoDoc('cuit')
-    } else if (ivaCond === 'monotributista') {
-      // Monotaxpayer invoicing is usually B or C
+    } else if (ivaCond === 'monotributo') {
       setTipoComprobante('factura_b')
     } else {
       setTipoComprobante('factura_b')
@@ -295,7 +290,7 @@ export const FacturaEmitirModal: React.FC<FacturaEmitirModalProps> = ({
                 >
                   <option value="consumidor_final">Consumidor Final</option>
                   <option value="responsable_inscripto">Responsable Inscripto</option>
-                  <option value="monotributista">Monotributista / Responsable Monotributo</option>
+                  <option value="monotributo">Monotributista / Responsable Monotributo</option>
                   <option value="exento">Sujeto Exento</option>
                 </select>
               </div>

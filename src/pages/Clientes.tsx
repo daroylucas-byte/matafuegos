@@ -190,8 +190,12 @@ const Clientes: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center gap-1">
-                        <button 
-                          onClick={() => { setClienteEditar(cliente); setFormOpen(true); }}
+                        <button
+                          onClick={async () => {
+                            const { data } = await supabase.from('clientes').select('*').eq('id', cliente.cliente_id || cliente.id).single()
+                            setClienteEditar(data || cliente)
+                            setFormOpen(true)
+                          }}
                           className="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-lg transition-all"
                         >
                           <Edit2 className="h-4 w-4" />

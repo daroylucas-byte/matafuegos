@@ -24,14 +24,28 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({ open, onClose, onSucce
     localidad: '',
     limite_credito: 0,
     notas: '',
-    activo: true
+    activo: true,
+    iva_cond: 'consumidor_final',
   })
 
   useEffect(() => {
     if (clienteInicial) {
-      setFormData({ ...formData, ...clienteInicial })
+      setFormData({
+        razon_social: '',
+        nombre_fantasia: '',
+        cuit: '',
+        email: '',
+        telefono: '',
+        direccion: '',
+        localidad: '',
+        limite_credito: 0,
+        notas: '',
+        activo: true,
+        iva_cond: 'consumidor_final',
+        ...clienteInicial,
+      })
     }
-  }, [clienteInicial])
+  }, [clienteInicial?.id])
 
   useEffect(() => {
     if (open) {
@@ -71,6 +85,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({ open, onClose, onSucce
       limite_credito: formData.limite_credito ?? 0,
       notas: formData.notas || null,
       activo: formData.activo ?? true,
+      iva_cond: formData.iva_cond || 'consumidor_final',
     }
 
     try {
@@ -155,6 +170,20 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({ open, onClose, onSucce
                 value={formData.cuit || ''}
                 onChange={e => setFormData({ ...formData, cuit: e.target.value })}
               />
+            </div>
+
+            <div className="md:col-span-2 space-y-1">
+              <label className="text-label-sm font-semibold text-on-surface-variant uppercase tracking-wider">Condición frente al IVA</label>
+              <select
+                className="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-md focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-surface"
+                value={formData.iva_cond || 'consumidor_final'}
+                onChange={e => setFormData({ ...formData, iva_cond: e.target.value })}
+              >
+                <option value="consumidor_final">Consumidor Final</option>
+                <option value="responsable_inscripto">Responsable Inscripto</option>
+                <option value="monotributo">Monotributista</option>
+                <option value="exento">Exento</option>
+              </select>
             </div>
 
             <div className="space-y-1">

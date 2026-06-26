@@ -60,6 +60,7 @@ export interface Cliente {
   limite_credito: number
   activo: boolean
   notas?: string
+  iva_cond?: string
   created_at: string
   updated_at: string
 }
