@@ -13,6 +13,14 @@ export interface Promocion {
   canal_envio: string | null
   enviada_at: string | null
   fecha: string
+  imagenes_meta?: {
+    tipo: 'pack' | 'carrusel'
+    imagenes: Array<{
+      formato: string
+      dimension: string
+      url: string
+    }>
+  } | null
 }
 
 export interface ConfigPromo {
@@ -39,11 +47,13 @@ export interface SaldoMarketing {
 export interface TransaccionMarketing {
   id: number
   created_at: string
-  tipo: 'carga' | 'generar_promos' | 'generar_imagen' | 'analizar_identidad'
+  tipo: 'carga' | 'generar_promos' | 'generar_imagen' | 'analizar_identidad' | 'generar_estrategia'
   monto: number
   saldo_nuevo: number
   descripcion: string | null
 }
+
+export type TipoImagen = 'simple' | 'pack' | 'carrusel'
 
 interface GenerarPromosOpciones {
   instruccion_extra?: string
@@ -189,9 +199,14 @@ export function usePromociones(localId: string | null) {
     }
   }
 
-  const generarImagen = async (promoId: number) => {
+  const generarImagen = async (promoId: number, tipo: TipoImagen = 'simple') => {
     if (!localId) return
-    if (saldo < 1250) { toast.error('Saldo insuficiente. Necesitás $1250 para generar una imagen.'); return }
+    const costos = { simple: 1250, pack: 3000, carrusel: 5000 }
+    const costo = costos[tipo]
+    if (saldo < costo) {
+      toast.error(`Saldo insuficiente. Necesitás $${costo} para generar este tipo de imagen.`)
+      return
+    }
 
     setGenerandoImagen(promoId)
     try {
@@ -205,13 +220,18 @@ export function usePromociones(localId: string | null) {
             'Authorization': `Bearer ${session?.access_token}`,
             'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           },
-          body: JSON.stringify({ promo_id: promoId, local_id: localId })
+          body: JSON.stringify({ promo_id: promoId, local_id: localId, tipo })
         }
       )
       const result = await res.json()
       if (!result.ok) throw new Error(result.error)
       await Promise.all([fetchPromociones(), fetchSaldo(), fetchTransacciones()])
-      toast.success('¡Imagen generada!')
+      const successMsgs = {
+        simple: '¡Imagen generada!',
+        pack: '¡Pack Meta generado! (3 formatos)',
+        carrusel: '¡Carrusel generado!'
+      }
+      toast.success(successMsgs[tipo])
     } catch (err: any) {
       toast.error('Error al generar imagen: ' + err.message)
     } finally {

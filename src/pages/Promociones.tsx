@@ -3,10 +3,11 @@ import { useSearchParams } from 'react-router-dom'
 import {
   Sparkles, Wallet, History, Image, CheckCircle, XCircle,
   Send, ChevronDown, ChevronUp, Upload, Loader2,
-  Eye, Plus, Megaphone, TrendingUp
+  Eye, Plus, Megaphone, TrendingUp, Smartphone, Package, LayoutGrid
 } from 'lucide-react'
 import { useLocal } from '../contexts/LocalContext'
 import { usePromociones } from '../hooks/usePromociones'
+import type { TipoImagen } from '../hooks/usePromociones'
 import { supabase } from '../lib/supabase'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
@@ -17,7 +18,7 @@ import { EstrategiaTab } from '../components/EstrategiaTab'
 type Tab = 'propuestas' | 'aprobadas'
 type MainTab = 'promociones' | 'estrategia'
 
-const COSTOS = { generar_promos: 600, generar_imagen: 1250, analizar_identidad: 500 }
+const COSTOS = { generar_promos: 600, generar_imagen_simple: 1250, generar_imagen_pack: 3000, generar_imagen_carrusel: 5000, analizar_identidad: 500 }
 
 export default function Promociones() {
   const { activeLocalId } = useLocal()
@@ -404,10 +405,10 @@ export default function Promociones() {
                     generandoImagen={generandoImagen === promo.id}
                     onAprobar={() => actualizarEstado(promo.id, 'aprobada')}
                     onRechazar={() => actualizarEstado(promo.id, 'rechazada')}
-                    onGenerarImagen={() => generarImagen(promo.id)}
+                    onGenerarImagen={(tipo) => generarImagen(promo.id, tipo)}
                     onEnviarWhatsApp={() => handleEnviarWhatsApp(promo)}
                     onQuitar={() => actualizarEstado(promo.id, 'rechazada')}
-                    saldoSuficiente={saldo >= COSTOS.generar_imagen}
+                    saldo={saldo}
                     tab={tab}
                   />
                 ))
@@ -443,7 +444,7 @@ export default function Promociones() {
           <div className="p-3 bg-surface-container-lowest rounded-xl text-body-sm text-on-surface-variant space-y-1">
             <p>💡 <strong>Referencia de costos:</strong></p>
             <p>• Generar 4 promos: $600 créditos</p>
-            <p>• Generar imagen: $1.250 créditos</p>
+            <p>• Generar imagen: simple $1.250 / pack $3.000 / carrusel $5.000 créditos</p>
             <p>• Analizar identidad visual: $500 créditos</p>
           </div>
           <Button
@@ -490,19 +491,41 @@ export default function Promociones() {
   )
 }
 
+const getFormatLabel = (formato: string) => {
+  const labels: Record<string, string> = {
+    feed_cuadrado: 'Feed cuadrado',
+    feed_vertical: 'Feed vertical',
+    story: 'Story'
+  }
+  return labels[formato] || formato.replace(/_/g, ' ')
+}
+
 interface PromoCardProps {
   promo: any
   generandoImagen: boolean
   onAprobar: () => void
   onRechazar: () => void
-  onGenerarImagen: () => void
+  onGenerarImagen: (tipo: TipoImagen) => void
   onEnviarWhatsApp: () => void
   onQuitar: () => void
-  saldoSuficiente: boolean
+  saldo: number
   tab: Tab
 }
 
-function PromoCard({ promo, generandoImagen, onAprobar, onRechazar, onGenerarImagen, onEnviarWhatsApp, onQuitar, saldoSuficiente, tab }: PromoCardProps) {
+function PromoCard({ promo, generandoImagen, onAprobar, onRechazar, onGenerarImagen, onEnviarWhatsApp, onQuitar, saldo, tab }: PromoCardProps) {
+  const [tipoGenerando, setTipoGenerando] = useState<TipoImagen | null>(null)
+
+  useEffect(() => {
+    if (!generandoImagen) {
+      setTipoGenerando(null)
+    }
+  }, [generandoImagen])
+
+  const handleGenerarClick = (tipo: TipoImagen) => {
+    setTipoGenerando(tipo)
+    onGenerarImagen(tipo)
+  }
+
   return (
     <div className={cn(
       'bg-white rounded-2xl border p-5 space-y-4 transition-all',
@@ -522,8 +545,49 @@ function PromoCard({ promo, generandoImagen, onAprobar, onRechazar, onGenerarIma
         </span>
       </div>
 
-      {promo.imagen_url && (
-        <img src={promo.imagen_url} alt="Imagen de promo" className="w-full rounded-xl object-cover max-h-64" />
+      {promo.imagenes_meta ? (
+        <div className="space-y-3 pt-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {promo.imagenes_meta.imagenes?.map((img: any, idx: number) => {
+              const cleanLabel = getFormatLabel(img.formato)
+              return (
+                <div key={idx} className="flex flex-col gap-1">
+                  <a
+                    href={img.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block aspect-square overflow-hidden rounded-xl border border-outline-variant hover:border-primary/50 transition-all bg-surface-container-lowest"
+                  >
+                    <img
+                      src={img.url}
+                      alt={cleanLabel}
+                      className="w-full h-full object-cover"
+                    />
+                  </a>
+                  <span className="text-label-xs text-on-surface-variant font-medium text-center leading-normal">
+                    {cleanLabel} {img.dimension}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              promo.imagenes_meta?.imagenes?.forEach((img: any) => {
+                window.open(img.url, '_blank')
+              })
+            }}
+            className="rounded-xl w-full sm:w-auto"
+          >
+            Descargar todo
+          </Button>
+        </div>
+      ) : (
+        promo.imagen_url && (
+          <img src={promo.imagen_url} alt="Imagen de promo" className="w-full rounded-xl object-cover max-h-64" />
+        )
       )}
 
       <div className="flex flex-wrap gap-2">
@@ -549,21 +613,7 @@ function PromoCard({ promo, generandoImagen, onAprobar, onRechazar, onGenerarIma
           </>
         )}
 
-        {!promo.imagen_url && (
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={onGenerarImagen}
-            isLoading={generandoImagen}
-            disabled={generandoImagen || !saldoSuficiente}
-            className="rounded-xl"
-          >
-            <Image className="h-3.5 w-3.5 mr-1" />
-            {generandoImagen ? 'Generando...' : 'Generar imagen'}
-          </Button>
-        )}
-
-        {promo.imagen_url && (
+        {promo.imagen_url && !promo.imagenes_meta && (
           <a href={promo.imagen_url} target="_blank" rel="noopener noreferrer">
             <Button size="sm" variant="secondary" className="rounded-xl">
               <Image className="h-3.5 w-3.5 mr-1" /> Ver imagen
@@ -571,6 +621,51 @@ function PromoCard({ promo, generandoImagen, onAprobar, onRechazar, onGenerarIma
           </a>
         )}
       </div>
+
+      {!promo.imagen_url && !promo.imagenes_meta && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+          {([
+            { tipo: 'simple', label: 'WhatsApp / Feed', costo: COSTOS.generar_imagen_simple, desc: '1 imagen cuadrada', icon: Smartphone },
+            { tipo: 'pack', label: 'Pack Meta', costo: COSTOS.generar_imagen_pack, desc: 'Feed + Vertical + Story', icon: Package },
+            { tipo: 'carrusel', label: 'Carrusel', costo: COSTOS.generar_imagen_carrusel, desc: 'Hasta 5 tarjetas', icon: LayoutGrid }
+          ] as const).map(({ tipo, label, costo, desc, icon: Icon }) => {
+            const isInsuficiente = saldo < costo
+            const isCargando = tipoGenerando === tipo
+
+            return (
+              <div key={tipo} className="flex flex-col gap-1 w-full">
+                <button
+                  type="button"
+                  onClick={() => handleGenerarClick(tipo)}
+                  disabled={generandoImagen || isInsuficiente}
+                  className={cn(
+                    'flex flex-col items-center justify-center p-3 text-center border rounded-xl transition-all h-full bg-white text-on-surface',
+                    isInsuficiente
+                      ? 'border-outline-variant opacity-50 cursor-not-allowed'
+                      : 'border-outline-variant hover:border-primary/50 hover:bg-surface-container-lowest'
+                  )}
+                >
+                  {isCargando ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-primary mb-1.5" />
+                  ) : (
+                    <Icon className="h-5 w-5 text-on-surface-variant mb-1.5" />
+                  )}
+                  <span className="text-body-sm font-bold leading-tight">{label}</span>
+                  <span className="text-label-xs text-on-surface-variant leading-tight mt-0.5">{desc}</span>
+                  <span className="text-label-xs text-primary font-bold mt-1.5">
+                    ${costo.toLocaleString('es-AR')}
+                  </span>
+                </button>
+                {isInsuficiente && (
+                  <span className="text-label-xs text-error text-center font-medium mt-0.5">
+                    Saldo insuficiente
+                  </span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       <p className="text-label-xs text-on-surface-variant">
         {new Date(promo.fecha).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}

@@ -125,7 +125,7 @@ export const FacturaDetalleModal: React.FC<FacturaDetalleModalProps> = ({
                 <h3 className="text-lg font-black text-slate-950 uppercase tracking-wide">
                   {factura.tipo_comprobante === 'factura_a' ? 'Factura A' : factura.tipo_comprobante === 'factura_c' ? 'Factura C' : 'Factura B'}
                 </h3>
-                <p className="text-xs text-slate-700">N° Comprobante: <span className="font-bold">0001-00000004</span></p>
+                <p className="text-xs text-slate-700">N° Comprobante: <span className="font-bold">{(factura.punto_venta ?? sucursalConfig?.punto_venta ?? 1).toString().padStart(4, '0')}-{(factura.numero_comprobante ?? 0).toString().padStart(8, '0')}</span></p>
                 <p className="text-xs text-slate-600">Fecha de Emisión: <b>{formatDate(factura.created_at)}</b></p>
                 <p className="text-xs text-slate-600">CUIT Emisor: <b>{formatCuit(sucursalConfig?.cuit || '30712345678')}</b></p>
                 <p className="text-xs text-slate-600">Ingresos Brutos: <b>{sucursalConfig?.iibb || '123-45678-9'}</b></p>

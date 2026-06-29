@@ -22,7 +22,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // Descontar saldo
     const { error: saldoError } = await supabase.rpc('descontar_saldo', {
       monto_descuento: 500,
       tipo_descuento: 'analizar_identidad',
@@ -30,26 +29,26 @@ serve(async (req) => {
     })
     if (saldoError) throw new Error(saldoError.message)
 
-    // Construir partes del prompt con las imágenes
     const imageParts = imagenes_base64.map((img: { data: string; mimeType: string }) => ({
       inlineData: { data: img.data, mimeType: img.mimeType || 'image/jpeg' }
     }))
 
     const textPart = {
-      text: `Analizá estas imágenes de la identidad visual de una empresa argentina y devolvé un JSON con exactamente estas claves:
+      text: `Sos un director de arte experto en publicidad gráfica. Analizá estas imágenes de marca y respondé SOLO con un JSON válido y completo. Es crítico que el JSON cierre correctamente con }}. Máximo 200 palabras por campo.
 
+Formato exacto:
 {
-  "colores_predominantes": "descripción de los colores principales (ej: azul marino, blanco, dorado)",
-  "tipografia_percibida": "descripción del estilo tipográfico (ej: sans-serif moderna, bold, minimalista)",
-  "estilo_general": "descripción del estilo general (ej: profesional y serio, moderno y dinámico, tradicional)",
-  "palabras_clave_visuales": "elementos visuales característicos separados por comas (ej: llamas, escudos, líneas geométricas)",
-  "instrucciones_para_ia": "instrucciones detalladas en primera persona sobre cómo generar contenido visual y textual que respete esta identidad de marca (máx 200 palabras)"
+  "colores_predominantes": "colores con HEX y uso (ej: verde #228B22 fondo, blanco texto, naranja #E87722 acento)",
+  "tipografia_percibida": "estilo tipográfico y jerarquía (ej: titular ultra-bold mayúsculas, subtítulo bold, cuerpo regular)",
+  "estilo_general": "estilo compositivo en una frase (ej: foto realista de producto con overlays de texto bold sobre fondo oscuro dividido en zonas)",
+  "tipo_imagen_producto": "FOTOGRAFIA_REAL o ILUSTRACION",
+  "palabras_clave_visuales": "elementos que deben aparecer siempre, separados por comas (ej: marco blanco, iconos fila, logo esquina inferior, URL al pie)",
+  "instrucciones_para_ia": "1.FONDO: [cómo dividir zonas y colores]. 2.PRODUCTO: [posición y si es foto o ilustración]. 3.TEXTO: [jerarquía y posición, siempre perfectamente escrito sin errores ortográficos ni letras duplicadas]. 4.DECORACION: [iconos y formas]. 5.MARCA: [logo y URL]. 6.PROHIBIDO: [qué no hacer]."
 }
 
-Respondé ÚNICAMENTE con el JSON, sin texto adicional.`
+NO agregues texto fuera del JSON. El JSON debe estar completo y cerrado.`
     }
 
-    // Llamar a Gemini con visión
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${Deno.env.get('GEMINI_API_KEY')}`,
       {
@@ -57,7 +56,7 @@ Respondé ÚNICAMENTE con el JSON, sin texto adicional.`
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [...imageParts, textPart] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 8192 }
+          generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
         })
       }
     )
@@ -65,10 +64,8 @@ Respondé ÚNICAMENTE con el JSON, sin texto adicional.`
     const geminiData = await geminiRes.json()
     const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
-    // Parsear JSON de respuesta
     let analisis: Record<string, string> = {}
     try {
-      // Saca bloques ```json ... ``` si los hay
       const stripped = rawText.replace(/```json\s*/gi, '').replace(/```/g, '').trim()
       const match = stripped.match(/\{[\s\S]*\}/)
       analisis = JSON.parse(match ? match[0] : stripped)
@@ -76,7 +73,6 @@ Respondé ÚNICAMENTE con el JSON, sin texto adicional.`
       throw new Error('Gemini no devolvió un JSON válido: ' + rawText.slice(0, 200))
     }
 
-    // Guardar o actualizar en BD
     const { error: upsertError } = await supabase
       .from('identidad_visual')
       .upsert({
@@ -86,6 +82,7 @@ Respondé ÚNICAMENTE con el JSON, sin texto adicional.`
         estilo_general:          analisis.estilo_general || '',
         palabras_clave_visuales: analisis.palabras_clave_visuales || '',
         instrucciones_para_ia:   analisis.instrucciones_para_ia || '',
+        tipo_imagen_producto:    analisis.tipo_imagen_producto || 'FOTOGRAFIA_REAL',
         actualizado_at:          new Date().toISOString()
       }, { onConflict: 'local_id' })
 
