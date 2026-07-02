@@ -82,7 +82,6 @@ export const MovimientoExtraForm: React.FC<MovimientoExtraFormProps> = ({ open, 
       if (currentSessionId) {
         await supabase.from('caja_movimientos').insert({
           caja_sesion_id: currentSessionId,
-          local_id: activeLocalId,
           tipo,
           metodo,
           monto,

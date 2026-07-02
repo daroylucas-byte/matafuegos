@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
-import { X, Play, Wallet, Loader2, CheckCircle2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { X, Play, Wallet, Loader2, CheckCircle2, History } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { Button } from '../ui/Button'
-
+import { formatCurrency } from '../../lib/utils'
 import { useLocal } from '../../contexts/LocalContext'
 
 interface AperturaCajaFormProps {
@@ -16,6 +16,30 @@ export const AperturaCajaForm: React.FC<AperturaCajaFormProps> = ({ open, onClos
   const [loading, setLoading] = useState(false)
   const [montoApertura, setMontoApertura] = useState<number>(0)
   const [notas, setNotas] = useState('')
+  const [cierrePrevio, setCierrePrevio] = useState<{ monto_cierre_real: number } | null>(null)
+
+  useEffect(() => {
+    if (!open || !activeLocalId) return
+    const fetchCierrePrevio = async () => {
+      const { data } = await supabase
+        .from('caja_sesiones')
+        .select('monto_cierre_real')
+        .eq('local_id', activeLocalId)
+        .eq('estado', 'cerrada')
+        .not('monto_cierre_real', 'is', null)
+        .order('cierre_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (data) {
+        setCierrePrevio(data)
+        setMontoApertura(data.monto_cierre_real)
+      } else {
+        setCierrePrevio(null)
+        setMontoApertura(0)
+      }
+    }
+    fetchCierrePrevio()
+  }, [open, activeLocalId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -70,6 +94,15 @@ export const AperturaCajaForm: React.FC<AperturaCajaFormProps> = ({ open, onClos
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
+          {cierrePrevio && (
+            <div className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-2xl text-body-sm">
+              <History className="h-5 w-5 text-primary shrink-0" />
+              <p className="text-on-surface">
+                Cierre anterior: <span className="font-bold text-primary">{formatCurrency(cierrePrevio.monto_cierre_real)}</span>
+                {' '}— se usó como monto inicial.
+              </p>
+            </div>
+          )}
           <div className="space-y-2">
             <label className="text-label-large font-bold text-on-surface-variant ml-1">Monto Inicial (Efectivo en Caja)</label>
             <div className="relative">

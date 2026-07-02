@@ -155,8 +155,7 @@ export const PagoForm: React.FC<PagoFormProps> = ({ open, onClose, onSuccess, cl
           metodo,
           monto,
           descripcion: `Cobro a cliente: ${cliente.razon_social}`,
-          pago_id: pago.id,
-          local_id: activeLocalId
+          pago_id: pago.id
         })
       }
 

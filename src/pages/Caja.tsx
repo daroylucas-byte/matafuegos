@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react'
-import { 
-  Lock, 
-  Wallet, 
-  TrendingUp, 
-  Landmark, 
-  Filter, 
+import {
+  Lock,
+  Wallet,
+  TrendingUp,
+  Landmark,
+  Filter,
   Download,
   ChevronLeft,
   ChevronRight,
-  Info,
-  ExternalLink,
   ArrowUpDown,
   Play,
-  Store
+  Store,
+  ClipboardList,
+  User
 } from 'lucide-react'
 import { cn, formatCurrency, formatDatetime } from '../lib/utils'
 import { Button } from '../components/ui/Button'
@@ -31,6 +31,7 @@ const Caja: React.FC = () => {
   const [aperturaOpen, setAperturaOpen] = useState(false)
   const [sesion, setSesion] = useState<any>(null)
   const [movimientos, setMovimientos] = useState<any[]>([])
+  const [historialCierres, setHistorialCierres] = useState<any[]>([])
 
   const loadCaja = async () => {
     if (!activeLocalId) {
@@ -73,6 +74,16 @@ const Caja: React.FC = () => {
         setSesion(null)
         setMovimientos([])
       }
+
+      // 3. Cargar historial de cierres
+      const { data: cierres } = await supabase
+        .from('caja_sesiones')
+        .select(`*, profiles:cajero_id (nombre)`)
+        .eq('local_id', activeLocalId)
+        .eq('estado', 'cerrada')
+        .order('cierre_at', { ascending: false })
+        .limit(10)
+      setHistorialCierres(cierres || [])
     } catch (err: any) {
       console.error('Error cargando caja:', err.message)
     } finally {
@@ -357,35 +368,59 @@ const Caja: React.FC = () => {
         </div>
       </div>
 
-      {/* Contextual Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-8">
-        <div className="relative overflow-hidden rounded-2xl h-[200px] group border border-outline-variant shadow-sm">
-          <img 
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
-            alt="Safety guide"
-            src="https://images.unsplash.com/photo-1556742049-3605e54d32e9?auto=format&fit=crop&q=80&w=800"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-6 flex flex-col justify-end">
-            <h5 className="text-white font-headline-sm mb-1">Guía de Seguridad</h5>
-            <p className="text-white/80 text-body-sm">Recuerde realizar retiros parciales de efectivo cuando el saldo supere los $100.000 para mayor seguridad en el local.</p>
+      {/* Historial de Cierres */}
+      {activeLocalId && (
+        <div className="bg-white border border-outline-variant rounded-xl shadow-sm overflow-hidden pb-8">
+          <div className="px-6 py-4 border-b border-outline-variant flex items-center gap-3 bg-surface-container-lowest">
+            <ClipboardList className="h-5 w-5 text-on-surface-variant" />
+            <h4 className="text-headline-sm font-bold text-on-surface">Historial de Cierres</h4>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-surface-container-low border-b border-outline-variant">
+                  <th className="px-6 py-3 text-label-sm font-semibold text-on-surface-variant uppercase tracking-wider">Apertura</th>
+                  <th className="px-6 py-3 text-label-sm font-semibold text-on-surface-variant uppercase tracking-wider">Cierre</th>
+                  <th className="px-6 py-3 text-label-sm font-semibold text-on-surface-variant uppercase tracking-wider">Cajero</th>
+                  <th className="px-6 py-3 text-label-sm font-semibold text-on-surface-variant uppercase tracking-wider text-right">Saldo Sistema</th>
+                  <th className="px-6 py-3 text-label-sm font-semibold text-on-surface-variant uppercase tracking-wider text-right">Conteo Real</th>
+                  <th className="px-6 py-3 text-label-sm font-semibold text-on-surface-variant uppercase tracking-wider text-right">Diferencia</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant">
+                {historialCierres.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-on-surface-variant italic">
+                      No hay cierres registrados para este local.
+                    </td>
+                  </tr>
+                ) : (
+                  historialCierres.map((cierre) => {
+                    const diferencia = (cierre.monto_cierre_real ?? 0) - (cierre.monto_cierre_sistema ?? 0)
+                    return (
+                      <tr key={cierre.id} className="table-row-hover">
+                        <td className="px-6 py-4 text-table-data text-on-surface tabular whitespace-nowrap">{formatDatetime(cierre.apertura_at)}</td>
+                        <td className="px-6 py-4 text-table-data text-on-surface tabular whitespace-nowrap">{cierre.cierre_at ? formatDatetime(cierre.cierre_at) : '—'}</td>
+                        <td className="px-6 py-4 text-table-data text-on-surface">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-on-surface-variant" />
+                            {cierre.profiles?.nombre || 'Sin asignar'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-table-data font-bold text-right tabular text-on-surface">{formatCurrency(cierre.monto_cierre_sistema ?? 0)}</td>
+                        <td className="px-6 py-4 text-table-data font-bold text-right tabular text-on-surface">{formatCurrency(cierre.monto_cierre_real ?? 0)}</td>
+                        <td className={`px-6 py-4 text-table-data font-bold text-right tabular ${diferencia === 0 ? 'text-secondary' : diferencia > 0 ? 'text-secondary' : 'text-error'}`}>
+                          {diferencia === 0 ? '—' : (diferencia > 0 ? '+' : '') + formatCurrency(diferencia)}
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
-        <div className="bg-primary-fixed-dim border border-primary-container/30 rounded-2xl p-6 flex flex-col justify-between shadow-sm">
-          <div>
-            <div className="flex items-center gap-2 mb-3 text-primary">
-              <Info className="h-5 w-5" />
-              <h5 className="text-label-md font-bold uppercase tracking-wider">Reporte Rápido</h5>
-            </div>
-            <p className="text-on-background text-body-md leading-relaxed">
-              El arqueo actual presenta una coincidencia del 100% con los registros del sistema. No se detectaron discrepancias en los últimos 5 turnos.
-            </p>
-          </div>
-          <a href="#" className="mt-4 text-primary font-bold text-label-sm flex items-center gap-2 hover:underline">
-            Ver historial de arqueos
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        </div>
-      </div>
+      )}
     </div>
   )
 }
